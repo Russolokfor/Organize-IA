@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// --- CONSTANTES VISUAIS E DE DADOS ---
+// --- CONFIGURAÇÃO VISUAL E DADOS ESTÁTICOS ---
 
 const MENU_ITEMS = [
   { id: 'all', label: 'Visão Geral', icon: LayoutGrid },
@@ -44,11 +44,18 @@ const PRIORITY_STYLES: Record<string, string> = {
 
 const PRIORITY_ORDER: Record<string, number> = { 'alta': 1, 'media': 2, 'baixa': 3 }
 
-// --- UTILITÁRIOS ---
+// --- FUNÇÕES UTILITÁRIAS ---
 
 const formatDate = (dateString: string) => {
   if (!dateString) return null
   const date = new Date(dateString)
+  const now = new Date()
+  
+  // Se for hoje, mostra só a hora
+  if (date.toDateString() === now.toDateString()) {
+    return `Hoje, ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`
+  }
+  
   return new Intl.DateTimeFormat('pt-BR', { 
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
   }).format(date)
@@ -57,79 +64,87 @@ const formatDate = (dateString: string) => {
 // --- COMPONENTE PRINCIPAL ---
 
 export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
-  // Inputs e Dados
+  // --- ESTADOS GERAIS ---
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [tasks, setTasks] = useState<any[]>(initialTasks || [])
   
-  // Interface e Navegação
+  // Estados de Navegação (Sidebar e Filtros)
   const [isSidebarOpen, setSidebarOpen] = useState(true)
   const [activeCategory, setActiveCategory] = useState('all')
   const [isMobile, setIsMobile] = useState(false)
   
-  // Modais (Guia/Sugestões)
+  // Estados do Modal de Sugestões (IA)
   const [guideOpen, setGuideOpen] = useState(false)
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [guideLoading, setGuideLoading] = useState(false)
   const [activeTask, setActiveTask] = useState<{id: string, title: string} | null>(null)
   const [addedSuggestions, setAddedSuggestions] = useState<number[]>([])
   
-  // Modais (Edição)
+  // Estados do Modal de Edição
   const [editingTask, setEditingTask] = useState<any | null>(null)
   
-  // Configurações de Input (Data/Recorrência)
+  // Estados dos Inputs Especiais (Recorrência e Data)
   const [recurrenceMenuOpen, setRecurrenceMenuOpen] = useState(false)
   const [selectedRecurrence, setSelectedRecurrence] = useState(RECURRENCE_OPTIONS[0])
   const [selectedDate, setSelectedDate] = useState('')
 
-  // Detectar Mobile
+  // Efeito para detectar Mobile e ajustar layout
   useEffect(() => {
     const checkMobile = () => {
-      if (window.innerWidth < 768) setSidebarOpen(false)
-      setIsMobile(window.innerWidth < 768)
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // --- HANDLERS (AÇÕES) ---
+  // --- HANDLERS (LÓGICA DE NEGÓCIO) ---
 
   async function handleSubmit() {
     if (!input.trim()) return
     setLoading(true)
     
+    // Prepara contexto para a IA
     const userContext = {
       localTime: new Date().toLocaleString('pt-BR'),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
     
+    // Prepara payload de recorrência se houver
     const recurrencePayload = selectedRecurrence.type ? { 
       type: selectedRecurrence.type as any, 
       interval: selectedRecurrence.interval 
     } : undefined
     
+    // Chama a Server Action
     const result = await organizeTasks(input, userContext, recurrencePayload, selectedDate)
     
     if (result.success && result.data) {
       setTasks(prev => [...result.data, ...prev])
+      // Limpa os campos após sucesso
       setInput('')
       setSelectedRecurrence(RECURRENCE_OPTIONS[0])
       setSelectedDate('')
     } else {
-      alert("Erro: " + result.error)
+      alert("Erro ao processar: " + result.error)
     }
     setLoading(false)
   }
 
   const handleToggle = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'concluido' ? 'pendente' : 'concluido'
+    // Atualização Otimista (UI primeiro)
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t))
+    // Atualização no Banco
     await toggleTask(id, newStatus === 'concluido')
   }
 
   const handleDelete = async (id: string) => {
-    if(confirm("Excluir esta tarefa permanentemente?")) {
+    if(confirm("Tem certeza que deseja excluir esta tarefa?")) {
+      // Remove tarefa e suas subtarefas visualmente
       setTasks(prev => prev.filter(t => t.id !== id && t.parent_id !== id))
       await deleteTask(id)
     }
@@ -137,9 +152,14 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
   const handleSaveEdit = async () => {
     if (!editingTask) return
+    
+    // Atualiza na lista local
     setTasks(prev => prev.map(t => t.id === editingTask.id ? editingTask : t))
+    
     const taskToSave = { ...editingTask }
-    setEditingTask(null)
+    setEditingTask(null) // Fecha modal
+    
+    // Salva no banco
     await updateTask(taskToSave.id, taskToSave)
   }
 
@@ -149,33 +169,50 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
     setSuggestions([])
     setAddedSuggestions([])
     setGuideLoading(true)
+    
     const result = await generateGuide(task.title)
-    if (result.success && result.suggestions) setSuggestions(result.suggestions)
+    
+    if (result.success && result.suggestions) {
+      setSuggestions(result.suggestions)
+    }
     setGuideLoading(false)
   }
 
   const handleAddSuggestion = async (suggestion: any, index: number) => {
     setAddedSuggestions(prev => [...prev, index])
     if (activeTask) {
+      // Cria a tarefa vinculada ao Pai (activeTask.id)
       const result = await createTask(suggestion, activeTask.id)
-      if (result.success && result.data) setTasks(prev => [result.data, ...prev])
+      if (result.success && result.data) {
+        setTasks(prev => [result.data, ...prev])
+      }
     }
   }
 
-  // --- FILTROS DE RENDERIZAÇÃO ---
+  // --- FILTROS DE VISUALIZAÇÃO ---
 
-  const categoryTasks = activeCategory === 'all' ? tasks : tasks.filter(t => t.category === activeCategory)
+  // Filtra por categoria selecionada na sidebar
+  const categoryTasks = activeCategory === 'all' 
+    ? tasks 
+    : tasks.filter(t => t.category === activeCategory)
+
+  // Separa tarefas Raiz (Pai) de Subtarefas (Filho)
   const rootTasks = categoryTasks.filter(t => !t.parent_id)
+  
+  // Filtra por status
   const activeRootTasks = rootTasks.filter(t => t.status !== 'concluido')
   const completedRootTasks = rootTasks.filter(t => t.status === 'concluido')
 
+  // Função para buscar e ordenar subtarefas de um pai
   const getSubtasks = (parentId: string) => {
     if (!parentId) return []
     return tasks
       .filter(t => t.parent_id === parentId)
       .sort((a, b) => {
+        // Concluídas vão para o final
         if (a.status === 'concluido' && b.status !== 'concluido') return 1
         if (a.status !== 'concluido' && b.status === 'concluido') return -1
+        // Ordena por prioridade
         const pA = PRIORITY_ORDER[a.priority?.toLowerCase()] || 99
         const pB = PRIORITY_ORDER[b.priority?.toLowerCase()] || 99
         return pA - pB
@@ -185,7 +222,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
   return (
     <div className="flex h-screen bg-[#0f1115] overflow-hidden text-slate-200 font-sans selection:bg-indigo-500/30">
       
-      {/* --- SIDEBAR ANIMADA --- */}
+      {/* --- SIDEBAR --- */}
       <motion.aside
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
@@ -215,6 +252,8 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon
                 const isActive = activeCategory === item.id
+                
+                // Contador inteligente
                 const count = item.id === 'all' 
                   ? tasks.filter(t => t.status !== 'concluido').length 
                   : tasks.filter(t => t.category === item.id && t.status !== 'concluido').length
@@ -275,7 +314,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         className="flex-1 h-full overflow-y-auto relative flex flex-col w-full bg-gradient-to-br from-[#0f1115] to-[#0a0b0e]"
       >
         
-        {/* Header Dinâmico (Quando sidebar fechada) */}
+        {/* Header Dinâmico (Mobile ou Sidebar Fechada) */}
         <AnimatePresence>
           {!isSidebarOpen && (
             <motion.header 
@@ -314,7 +353,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-white">Editar Tarefa</h3>
-                  <button onClick={() => setEditingTask(null)}><X size={20} className="text-zinc-500 hover:text-white"/></button>
+                  <button onClick={() => setEditingTask(null)}>
+                    <X size={20} className="text-zinc-500 hover:text-white"/>
+                  </button>
                 </div>
                 
                 <div className="space-y-1">
@@ -379,18 +420,31 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         {/* Modal Sugestões (IA) */}
         <AnimatePresence>
           {guideOpen && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setGuideOpen(false)}>
-              <motion.div onClick={(e) => e.stopPropagation()} className="bg-[#161920] border border-[#2A2E37] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setGuideOpen(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[#161920] border border-[#2A2E37] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              >
                 <div className="p-5 border-b border-[#23262f] flex justify-between items-center bg-[#1A1D24]/50 backdrop-blur-md">
                   <div className="flex items-center gap-3">
-                    <div className="bg-indigo-500/20 p-2 rounded-lg"><Zap size={20} className="text-indigo-400" fill="currentColor" /></div>
+                    <div className="bg-indigo-500/20 p-2 rounded-lg">
+                      <Zap size={20} className="text-indigo-400" fill="currentColor" />
+                    </div>
                     <div>
-                      <h3 className="font-bold text-gray-200">Sugestões de Subtarefas</h3>
+                      <h3 className="font-bold text-gray-200">Sugestões</h3>
                       <p className="text-xs text-gray-500 truncate max-w-[250px]">{activeTask?.title}</p>
                     </div>
                   </div>
-                  <button onClick={() => setGuideOpen(false)} className="text-gray-500 hover:text-white p-2 hover:bg-white/10 rounded-full transition"><X size={20}/></button>
+                  <button onClick={() => setGuideOpen(false)} className="text-gray-500 hover:text-white p-2 hover:bg-white/10 rounded-full transition">
+                    <X size={20}/>
+                  </button>
                 </div>
+                
                 <div className="p-6 overflow-y-auto custom-scrollbar">
                   {guideLoading ? (
                     <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -402,26 +456,37 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                       {suggestions.map((sug, idx) => {
                         const isAdded = addedSuggestions.includes(idx)
                         return (
-                          <motion.div 
+                          <div 
                             key={idx} 
-                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
-                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isAdded ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-[#0F1115] border-[#23262f] hover:border-zinc-600'}`}
+                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                              isAdded 
+                                ? 'bg-indigo-500/5 border-indigo-500/20' 
+                                : 'bg-[#0F1115] border-[#23262f] hover:border-zinc-600'
+                            }`}
                           >
                             <div className="flex-1">
                               <h4 className={`font-medium text-sm ${isAdded ? 'text-indigo-400' : 'text-gray-200'}`}>{sug.title}</h4>
                               <div className="flex gap-2 mt-1">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${PRIORITY_STYLES[sug.priority?.toLowerCase()] || 'bg-zinc-800 text-zinc-400'}`}>{sug.priority}</span>
-                                <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-gray-500">{sug.estimated_time}m</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${PRIORITY_STYLES[sug.priority?.toLowerCase()] || 'bg-zinc-800 text-zinc-400'}`}>
+                                  {sug.priority}
+                                </span>
+                                <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-gray-500">
+                                  {sug.estimated_time}m
+                                </span>
                               </div>
                             </div>
                             <button 
                               onClick={() => !isAdded && handleAddSuggestion(sug, idx)} 
                               disabled={isAdded} 
-                              className={`p-2 rounded-lg text-xs font-bold transition-all ${isAdded ? 'bg-indigo-500/20 text-indigo-400 cursor-default' : 'bg-white text-black hover:bg-zinc-200'}`}
+                              className={`p-2 rounded-lg text-xs font-bold transition-all ${
+                                isAdded 
+                                  ? 'bg-indigo-500/20 text-indigo-400 cursor-default' 
+                                  : 'bg-white text-black hover:bg-zinc-200'
+                              }`}
                             >
                               {isAdded ? <Check size={16}/> : <Plus size={16}/>}
                             </button>
-                          </motion.div>
+                          </div>
                         )
                       })}
                     </div>
@@ -432,10 +497,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
           )}
         </AnimatePresence>
 
-        {/* --- DASHBOARD (SCROLL) --- */}
+        {/* --- DASHBOARD --- */}
         <div className="max-w-7xl mx-auto w-full p-6 pb-24 space-y-12">
           
-          {/* Título do Dashboard */}
           <div className="flex justify-between items-end mt-4">
             <div>
               <h2 className="text-3xl font-bold text-white tracking-tight">
@@ -453,7 +517,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
-              placeholder="O que vamos organizar hoje? Ex: Pagar luz amanhã..."
+              placeholder="O que vamos organizar hoje?"
               className="w-full h-24 p-4 rounded-xl bg-transparent text-white resize-none outline-none placeholder:text-zinc-600 text-lg font-light"
             />
             <div className="flex justify-between items-center px-2 pb-2">
@@ -468,7 +532,11 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                  <div className="relative">
                     <button 
                       onClick={() => setRecurrenceMenuOpen(!recurrenceMenuOpen)} 
-                      className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border transition-all ${selectedRecurrence.type ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'}`}
+                      className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border transition-all ${
+                        selectedRecurrence.type 
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                          : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'
+                      }`}
                     >
                       <Repeat size={12} /> {selectedRecurrence.label} <ChevronDown size={10} />
                     </button>
@@ -492,14 +560,18 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                     </AnimatePresence>
                  </div>
 
-                 {/* Data */}
-                 <div className="relative">
-                    <label className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border cursor-pointer transition-all ${selectedDate ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'}`}>
-                       <Calendar size={12} />
-                       {selectedDate ? new Date(selectedDate).toLocaleDateString('pt-BR') : 'Data'}
+                 {/* Data Manual (COM INPUT CORRIGIDO) */}
+                 <div className="relative group">
+                    <label className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border cursor-pointer transition-all ${
+                      selectedDate 
+                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                        : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'
+                    }`}>
+                       <Calendar size={12} /> 
+                       {selectedDate ? new Date(selectedDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) : 'Data'}
                        <input 
                          type="date" 
-                         className="absolute opacity-0 inset-0 cursor-pointer" 
+                         className="absolute opacity-0 inset-0 cursor-pointer w-full h-full" 
                          onChange={(e) => setSelectedDate(e.target.value)} 
                        />
                     </label>
@@ -520,6 +592,8 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {COLUMNS.map((col) => (
               <div key={col.id} className="flex flex-col gap-5">
+                
+                {/* Header da Coluna */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#23262f]">
                   <div className="flex items-center gap-2.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${col.color.replace('text', 'bg')}`} />
@@ -530,6 +604,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                   </span>
                 </div>
 
+                {/* Lista de Cards */}
                 <div className="flex flex-col gap-3 min-h-[150px]">
                   <AnimatePresence mode="popLayout">
                     {activeRootTasks
@@ -560,7 +635,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                                     {task.title}
                                   </p>
                                   
-                                  {/* BOTÕES DE AÇÃO (Raio e Lixeira) - Lado a Lado */}
+                                  {/* BOTÕES DE AÇÃO (Lado a Lado) */}
                                   <div className="flex items-center gap-1 shrink-0">
                                     <button 
                                       onClick={() => handleGuide({id: task.id, title: task.title})} 
@@ -569,19 +644,17 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                                     >
                                       <Zap size={14} fill="currentColor" />
                                     </button>
-                                    
                                     <button 
                                       onClick={() => setEditingTask(task)} 
                                       className="text-zinc-600 hover:text-yellow-500 p-1.5 rounded-md hover:bg-yellow-500/10 transition-colors"
-                                      title="Editar tarefa"
+                                      title="Editar"
                                     >
                                       <Pencil size={14} />
                                     </button>
-
                                     <button 
                                       onClick={() => handleDelete(task.id)} 
                                       className="text-zinc-600 hover:text-rose-500 p-1.5 rounded-md hover:bg-rose-500/10 transition-colors"
-                                      title="Excluir tarefa"
+                                      title="Excluir"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -598,7 +671,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                                    )}
                                 </div>
 
-                                {/* Subtarefas */}
+                                {/* SUBTAREFAS */}
                                 {subtasks.length > 0 && (
                                   <div className="mt-4 pt-3 border-t border-[#23262f] space-y-2">
                                     {subtasks.map((sub, idx) => (
@@ -616,6 +689,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                                           {sub.title}
                                         </button>
                                         
+                                        {/* Ações Subtarefa */}
                                         <div className="flex items-center opacity-0 group-hover/sub:opacity-100 transition-opacity">
                                           <button onClick={() => setEditingTask(sub)} className="text-zinc-600 hover:text-yellow-500 p-1"><Pencil size={10} /></button>
                                           <button onClick={() => handleDelete(sub.id)} className="text-zinc-600 hover:text-red-500 p-1"><Trash2 size={10} /></button>
@@ -641,7 +715,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
             ))}
           </div>
 
-          {/* SESSÃO CONCLUÍDAS COM ANIMAÇÃO (RESTAURADA) */}
+          {/* SESSÃO CONCLUÍDAS COM ANIMAÇÃO */}
           <AnimatePresence>
             {completedRootTasks.length > 0 && (
               <motion.div 
