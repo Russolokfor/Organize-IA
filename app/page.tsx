@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase' // Usando o cliente do navegador
+import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Lock, Loader2, AlertCircle, Mail, UserPlus, LogIn, CheckCircle2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -9,8 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 export default function LoginPage() {
   const router = useRouter()
   
-  // Estados para controlar o fluxo
-  const [isSignUp, setIsSignUp] = useState(false) // false = Login, true = Cadastro
+  // Estados
+  const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,46 +27,31 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        // --- MODO CADASTRO ---
+        // CADASTRO
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
         })
-
         if (error) throw error
-
-        // Verifica se o cadastro foi automático ou requer confirmação
+        
         if (data.session) {
            window.location.href = '/'
         } else {
-           setSuccessMsg("Conta criada com sucesso! Verifique se já consegue entrar.")
-           // Tenta logar automaticamente após um breve delay se a sessão já estiver ativa
-           setTimeout(() => {
-             if (data.session) window.location.href = '/'
-             else setIsSignUp(false) // Volta para tela de login
-           }, 2000)
+           setSuccessMsg("Conta criada! Verifique seu e-mail para confirmar.")
         }
 
       } else {
-        // --- MODO LOGIN (Rigoroso) ---
+        // LOGIN
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
-
-        if (error) {
-          // Traduzindo erros comuns do Supabase
-          if (error.message.includes("Invalid login")) {
-            throw new Error("E-mail ou senha incorretos.")
-          }
-          throw error
-        }
-
-        // Sucesso absoluto
+        if (error) throw new Error("E-mail ou senha incorretos.")
+        
         window.location.href = '/'
       }
     } catch (err: any) {
-      setError(err.message || "Ocorreu um erro inesperado.")
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -74,7 +59,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0f1115] p-4 text-zinc-100 font-sans selection:bg-indigo-500/30">
-      {/* Fundo decorativo sutil */}
+      {/* Fundo decorativo (MANTIDO) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
@@ -86,7 +71,6 @@ export default function LoginPage() {
         className="w-full max-w-md space-y-8 rounded-3xl bg-[#161920]/80 backdrop-blur-xl p-8 shadow-2xl border border-[#23262f] relative z-10"
       >
         
-        {/* Cabeçalho Dinâmico */}
         <div className="text-center space-y-2">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 mb-6 border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.15)]">
             <AnimatePresence mode="wait">
@@ -109,7 +93,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Feedback Visual */}
+        {/* Alertas de Feedback */}
         <AnimatePresence>
           {error && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -129,7 +113,6 @@ export default function LoginPage() {
           )}
         </AnimatePresence>
 
-        {/* Formulário */}
         <form onSubmit={handleAuth} className="space-y-5">
           <div className="space-y-4">
             <div className="relative group">
@@ -174,7 +157,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Alternador de Modo */}
         <div className="text-center pt-2">
           <button
             type="button"
