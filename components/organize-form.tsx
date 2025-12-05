@@ -220,19 +220,25 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
   }
 
   return (
-    <div className="flex h-screen bg-[#0f1115] overflow-hidden text-slate-200 font-sans selection:bg-indigo-500/30">
+    <div className="flex h-screen bg-[#0f1115] overflow-hidden text-slate-200 font-sans selection:bg-indigo-500/30 relative">
       
+      {/* --- FUNDO ATMOSFÉRICO --- */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
+      </div>
+
       {/* --- SIDEBAR --- */}
       <motion.aside
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="h-full flex flex-col shrink-0 overflow-hidden whitespace-nowrap z-20 border-r border-white/5 bg-[#0f1115]/95 backdrop-blur-xl relative"
+        className="h-full flex flex-col shrink-0 overflow-hidden whitespace-nowrap z-20 border-r border-white/5 bg-[#0f1115]/60 backdrop-blur-xl relative shadow-2xl"
       >
         <div className="w-[280px] flex flex-col h-full">
             {/* Header Sidebar */}
-            <div className="p-5 pb-6 flex justify-between items-center">
-              <div className="flex items-center gap-3 pl-2">
+            <div className="p-6 flex justify-between items-center">
+              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-1.5 rounded-lg shadow-lg shadow-indigo-500/20">
                   <Sparkles size={18} className="text-white" fill="currentColor" />
                 </div>
@@ -240,15 +246,15 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               </div>
               <button 
                 onClick={() => setSidebarOpen(false)} 
-                className="text-zinc-500 hover:text-white transition-colors p-1.5 hover:bg-white/5 rounded-md"
+                className="text-zinc-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md"
               >
                 <PanelLeftClose size={18} />
               </button>
             </div>
 
             {/* Menu Items */}
-            <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-              <p className="text-[10px] font-bold text-zinc-500 px-3 mb-3 uppercase tracking-widest">Workspace</p>
+            <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
+              <p className="text-[10px] font-bold text-zinc-500 px-4 mb-3 uppercase tracking-widest">Workspace</p>
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon
                 const isActive = activeCategory === item.id
@@ -262,7 +268,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                   <button
                     key={item.id}
                     onClick={() => setActiveCategory(item.id)}
-                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ease-in-out relative overflow-hidden ${
+                    className={`group w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all relative overflow-hidden ${
                       isActive 
                         ? 'text-white shadow-lg shadow-indigo-500/10' 
                         : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
@@ -284,7 +290,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                       <span className={`relative z-10 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         isActive 
                           ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' 
-                          : 'bg-[#23262f] border-[#2d313a] text-zinc-500'
+                          : 'bg-[#23262f]/50 border-white/5 text-zinc-500'
                       }`}>
                         {count}
                       </span>
@@ -296,11 +302,11 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
             {/* Footer Sidebar */}
             <div className="p-4 border-t border-white/5 space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group pl-4">
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group">
                 <Settings size={18} className="text-zinc-500 group-hover:text-zinc-300" />
                 <span>Configurações</span>
               </button>
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group pl-4">
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group">
                 <LogOut size={18} className="text-zinc-500 group-hover:text-rose-400 transition-transform" /> 
                 <span>Sair da conta</span>
               </button>
@@ -311,7 +317,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
       {/* --- CONTEÚDO PRINCIPAL --- */}
       <motion.main 
         animate={{ marginLeft: 0 }} 
-        className="flex-1 h-full overflow-y-auto relative flex flex-col w-full bg-gradient-to-br from-[#0f1115] to-[#0a0b0e]"
+        className="flex-1 h-full overflow-y-auto relative flex flex-col w-full z-10"
       >
         
         {/* Header Dinâmico (Mobile ou Sidebar Fechada) */}
@@ -343,13 +349,13 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
           {editingTask && (
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
               onClick={() => setEditingTask(null)}
             >
               <motion.div 
                 initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()} 
-                className="bg-[#161920] border border-[#2A2E37] w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4"
+                className="bg-[#161920]/90 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 ring-1 ring-white/5"
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-white">Editar Tarefa</h3>
@@ -363,7 +369,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                   <input 
                     value={editingTask.title}
                     onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                    className="w-full p-3 rounded-lg bg-black/30 border border-[#2A2E37] text-white focus:border-indigo-500 outline-none"
+                    className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white focus:border-indigo-500 outline-none"
                   />
                 </div>
 
@@ -373,7 +379,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                     <select 
                       value={editingTask.priority}
                       onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-black/30 border border-[#2A2E37] text-white outline-none"
+                      className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white outline-none"
                     >
                       <option value="alta">Alta</option>
                       <option value="media">Média</option>
@@ -385,7 +391,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                     <select 
                       value={editingTask.category}
                       onChange={(e) => setEditingTask({...editingTask, category: e.target.value})}
-                      className="w-full p-3 rounded-lg bg-black/30 border border-[#2A2E37] text-white outline-none"
+                      className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white outline-none"
                     >
                       <option value="Trabalho">Trabalho</option>
                       <option value="Casa">Casa</option>
@@ -402,13 +408,13 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                     type="datetime-local"
                     value={editingTask.due_date ? new Date(editingTask.due_date).toISOString().slice(0, 16) : ''}
                     onChange={(e) => setEditingTask({...editingTask, due_date: e.target.value ? new Date(e.target.value).toISOString() : null})}
-                    className="w-full p-3 rounded-lg bg-black/30 border border-[#2A2E37] text-white outline-none [color-scheme:dark]"
+                    className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white outline-none [color-scheme:dark]"
                   />
                 </div>
 
                 <button 
                   onClick={handleSaveEdit}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-colors"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 shadow-lg shadow-indigo-500/20"
                 >
                   <Save size={18} /> Salvar Alterações
                 </button>
@@ -428,9 +434,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               <motion.div 
                 initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#161920] border border-[#2A2E37] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+                className="bg-[#161920]/90 backdrop-blur-xl border border-white/10 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ring-1 ring-white/5"
               >
-                <div className="p-5 border-b border-[#23262f] flex justify-between items-center bg-[#1A1D24]/50 backdrop-blur-md">
+                <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
                   <div className="flex items-center gap-3">
                     <div className="bg-indigo-500/20 p-2 rounded-lg">
                       <Zap size={20} className="text-indigo-400" fill="currentColor" />
@@ -461,7 +467,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                             className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                               isAdded 
                                 ? 'bg-indigo-500/5 border-indigo-500/20' 
-                                : 'bg-[#0F1115] border-[#23262f] hover:border-zinc-600'
+                                : 'bg-black/20 border-white/5 hover:border-white/10'
                             }`}
                           >
                             <div className="flex-1">
@@ -511,8 +517,8 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
             </div>
           </div>
 
-          {/* INPUT AREA */}
-          <div className="bg-[#161920]/80 backdrop-blur-xl border border-[#23262f] p-1.5 rounded-2xl shadow-2xl max-w-3xl mx-auto relative z-10 transition-all focus-within:border-indigo-500/30 focus-within:ring-1 focus-within:ring-indigo-500/30">
+          {/* INPUT AREA COM GRADIENTE */}
+          <div className="group relative bg-[#161920]/60 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl shadow-2xl max-w-3xl mx-auto z-10 transition-all focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 focus-within:shadow-[0_0_30px_rgba(99,102,241,0.1)]">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -523,7 +529,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
             <div className="flex justify-between items-center px-2 pb-2">
               <div className="flex gap-3 items-center">
                  {/* IA Tag */}
-                 <div className="flex gap-2 items-center bg-black/20 px-2 py-1 rounded-md border border-white/5">
+                 <div className="flex gap-2 items-center bg-black/30 px-2 py-1 rounded-md border border-white/5">
                     <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]" />
                     <span className="text-[10px] text-zinc-400 font-medium tracking-wide">IA ATIVA</span>
                  </div>
@@ -535,7 +541,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                       className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border transition-all ${
                         selectedRecurrence.type 
                           ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
-                          : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'
+                          : 'bg-black/30 text-zinc-400 border-white/5 hover:bg-white/10'
                       }`}
                     >
                       <Repeat size={12} /> {selectedRecurrence.label} <ChevronDown size={10} />
@@ -560,15 +566,17 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                     </AnimatePresence>
                  </div>
 
-                 {/* Data Manual (COM INPUT CORRIGIDO) */}
+                 {/* Data Manual (COM INPUT CORRIGIDO E CALENDÁRIO) */}
                  <div className="relative group">
                     <label className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md border cursor-pointer transition-all ${
                       selectedDate 
                         ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
-                        : 'bg-black/20 text-zinc-400 border-white/5 hover:bg-white/5'
+                        : 'bg-black/30 text-zinc-400 border-white/5 hover:bg-white/10'
                     }`}>
                        <Calendar size={12} /> 
                        {selectedDate ? new Date(selectedDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) : 'Data'}
+                       
+                       {/* INPUT INVISÍVEL COBRINDO O BOTÃO */}
                        <input 
                          type="date" 
                          className="absolute opacity-0 inset-0 cursor-pointer w-full h-full" 
@@ -581,9 +589,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               <button 
                 onClick={handleSubmit} 
                 disabled={loading || !input.trim()} 
-                className="bg-white hover:bg-zinc-200 text-black px-6 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-white/10 active:scale-95"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-6 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 active:scale-95"
               >
-                {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <><Sparkles className="w-4 h-4 text-indigo-600" /> Organizar</>}
+                {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <><Sparkles className="w-4 h-4 text-white" /> Organizar</>}
               </button>
             </div>
           </div>
@@ -594,12 +602,12 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               <div key={col.id} className="flex flex-col gap-5">
                 
                 {/* Header da Coluna */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#23262f]">
+                <div className="flex items-center justify-between pb-3 border-b border-white/5">
                   <div className="flex items-center gap-2.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${col.color.replace('text', 'bg')}`} />
                     <h3 className={`text-xs font-bold uppercase tracking-widest ${col.color.replace('text-', 'text-opacity-80 text-')}`}>{col.label}</h3>
                   </div>
-                  <span className="text-[10px] text-zinc-500 bg-[#1A1D24] px-2 py-0.5 rounded border border-[#23262f]">
+                  <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">
                     {activeRootTasks.filter(t => t.priority === col.id).length}
                   </span>
                 </div>
@@ -619,7 +627,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="group p-5 rounded-2xl bg-[#161920] border border-[#23262f] hover:border-zinc-600 hover:shadow-xl transition-all relative overflow-hidden"
+                            className="group p-5 rounded-2xl bg-[#161920]/40 border border-white/5 hover:border-white/10 hover:bg-[#161920]/80 hover:shadow-xl transition-all relative overflow-hidden backdrop-blur-sm"
                           >
                             <div className="flex items-start gap-3 relative z-10">
                               <button 
@@ -635,7 +643,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                                     {task.title}
                                   </p>
                                   
-                                  {/* BOTÕES DE AÇÃO (Lado a Lado) */}
+                                  {/* BOTÕES DE AÇÃO */}
                                   <div className="flex items-center gap-1 shrink-0">
                                     <button 
                                       onClick={() => handleGuide({id: task.id, title: task.title})} 
@@ -673,7 +681,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
                                 {/* SUBTAREFAS */}
                                 {subtasks.length > 0 && (
-                                  <div className="mt-4 pt-3 border-t border-[#23262f] space-y-2">
+                                  <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
                                     {subtasks.map((sub, idx) => (
                                       <div key={sub.id || `sub-${idx}`} className="flex items-start gap-2 pl-1 group/sub">
                                         <CornerDownRight size={12} className="text-zinc-600 shrink-0 mt-1" />
@@ -706,7 +714,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                   </AnimatePresence>
                   
                   {activeRootTasks.filter(t => t.priority === col.id).length === 0 && (
-                    <div className="h-24 rounded-xl border border-dashed border-[#1A1D24] flex items-center justify-center text-zinc-800 text-xs">
+                    <div className="h-24 rounded-xl border border-dashed border-white/5 flex items-center justify-center text-zinc-800 text-xs">
                       Vazio
                     </div>
                   )}
@@ -722,7 +730,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                 initial={{ opacity: 0, height: 0 }} 
                 animate={{ opacity: 1, height: 'auto' }} 
                 exit={{ opacity: 0, height: 0 }}
-                className="border-t border-[#23262f] pt-12 mt-12"
+                className="border-t border-white/5 pt-12 mt-12"
               >
                 <div className="flex items-center gap-3 mb-6 px-1 opacity-60 hover:opacity-100 transition-opacity">
                   <h3 className="text-lg font-bold text-zinc-500 flex items-center gap-2">
@@ -740,7 +748,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                         initial={{ opacity: 0, scale: 0.9 }} 
                         animate={{ opacity: 1, scale: 1 }} 
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-[#0F1115] border border-[#1A1D24]"
+                        className="flex items-center gap-4 p-4 rounded-xl bg-[#0F1115]/40 border border-white/5"
                       >
                         <button onClick={() => handleToggle(task.id, task.status)} className="text-emerald-500 hover:text-yellow-400 shrink-0">
                           <CheckCircle2 size={20} />
