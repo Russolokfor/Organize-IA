@@ -7,7 +7,7 @@ import { generateGuide } from '@/actions/guide'
 import { 
   Sparkles, Loader2, Clock, CheckCircle2, Circle, Trash2, Zap, X, Plus, Check,
   LayoutGrid, Briefcase, Home, GraduationCap, User, Heart, LogOut, PanelLeftClose, PanelLeftOpen,
-  CornerDownRight, Settings, Calendar, Repeat, ChevronDown, Pencil, Save, Target, Trophy
+  CornerDownRight, Settings, Calendar, Repeat, ChevronDown, Pencil, Save
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -31,9 +31,9 @@ const RECURRENCE_OPTIONS = [
 ]
 
 const COLUMNS = [
-  { id: 'alta', label: 'Alta Prioridade', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', gradient: 'from-rose-500/10 to-transparent' },
-  { id: 'media', label: 'Média Prioridade', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', gradient: 'from-amber-500/10 to-transparent' },
-  { id: 'baixa', label: 'Baixa Prioridade', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', gradient: 'from-emerald-500/10 to-transparent' },
+  { id: 'alta', label: 'Alta Prioridade', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
+  { id: 'media', label: 'Média Prioridade', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+  { id: 'baixa', label: 'Baixa Prioridade', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
 ]
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -100,20 +100,24 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
     if (!input.trim()) return
     setLoading(true)
     
+    // Prepara contexto para a IA
     const userContext = {
       localTime: new Date().toLocaleString('pt-BR'),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
     
+    // Prepara payload de recorrência se houver
     const recurrencePayload = selectedRecurrence.type ? { 
       type: selectedRecurrence.type as any, 
       interval: selectedRecurrence.interval 
     } : undefined
     
+    // Chama a Server Action
     const result = await organizeTasks(input, userContext, recurrencePayload, selectedDate)
     
     if (result.success && result.data) {
       setTasks(prev => [...result.data, ...prev])
+      // Limpa os campos após sucesso
       setInput('')
       setSelectedRecurrence(RECURRENCE_OPTIONS[0])
       setSelectedDate('')
@@ -170,6 +174,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
   const handleAddSuggestion = async (suggestion: any, index: number) => {
     setAddedSuggestions(prev => [...prev, index])
     if (activeTask) {
+      // Cria a tarefa vinculada ao Pai (activeTask.id)
       const result = await createTask(suggestion, activeTask.id)
       if (result.success && result.data) {
         setTasks(prev => [result.data, ...prev])
@@ -179,19 +184,28 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
   // --- FILTROS DE VISUALIZAÇÃO ---
 
-  const categoryTasks = activeCategory === 'all' ? tasks : tasks.filter(t => t.category === activeCategory)
+  // Filtra por categoria selecionada na sidebar
+  const categoryTasks = activeCategory === 'all' 
+    ? tasks 
+    : tasks.filter(t => t.category === activeCategory)
+
+  // Separa tarefas Raiz (Pai) de Subtarefas (Filho)
   const rootTasks = categoryTasks.filter(t => !t.parent_id)
   
+  // Filtra por status
   const activeRootTasks = rootTasks.filter(t => t.status !== 'concluido')
   const completedRootTasks = rootTasks.filter(t => t.status === 'concluido')
 
+  // Função para buscar e ordenar subtarefas de um pai
   const getSubtasks = (parentId: string) => {
     if (!parentId) return []
     return tasks
       .filter(t => t.parent_id === parentId)
       .sort((a, b) => {
+        // Concluídas vão para o final
         if (a.status === 'concluido' && b.status !== 'concluido') return 1
         if (a.status !== 'concluido' && b.status === 'concluido') return -1
+        // Ordena por prioridade
         const pA = PRIORITY_ORDER[a.priority?.toLowerCase()] || 99
         const pB = PRIORITY_ORDER[b.priority?.toLowerCase()] || 99
         return pA - pB
@@ -207,7 +221,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
       </div>
 
-      {/* --- SIDEBAR --- */}
+      {/* --- SIDEBAR (DESKTOP) --- */}
       <motion.aside
         initial={false}
         animate={{ width: isSidebarOpen && !isMobile ? 280 : 0, opacity: isSidebarOpen && !isMobile ? 1 : 0 }}
@@ -215,7 +229,8 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         className="hidden md:flex h-full flex-col shrink-0 overflow-hidden whitespace-nowrap z-20 border-r border-white/5 bg-[#0f1115]/60 backdrop-blur-xl relative shadow-2xl"
       >
         <div className="w-[280px] flex flex-col h-full">
-            <div className="p-6 flex justify-between items-center">
+            {/* Header Sidebar */}
+            <div className="p-5 pb-6 flex justify-between items-center">
               <div className="flex items-center gap-3 pl-2">
                 <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-1.5 rounded-lg shadow-lg shadow-indigo-500/20">
                   <Sparkles size={18} className="text-white" fill="currentColor" />
@@ -230,11 +245,14 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               </button>
             </div>
 
+            {/* Menu Items */}
             <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
               <p className="text-[10px] font-bold text-zinc-500 px-3 mb-3 uppercase tracking-widest">Workspace</p>
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon
                 const isActive = activeCategory === item.id
+                
+                // Contador inteligente
                 const count = item.id === 'all' 
                   ? tasks.filter(t => t.status !== 'concluido').length 
                   : tasks.filter(t => t.category === item.id && t.status !== 'concluido').length
@@ -274,12 +292,14 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                 )
               })}
             </nav>
+
+            {/* Footer Sidebar */}
             <div className="p-4 border-t border-white/5 space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group">
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group pl-4">
                 <Settings size={18} className="text-zinc-500 group-hover:text-zinc-300" />
                 <span>Configurações</span>
               </button>
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group">
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group pl-4">
                 <LogOut size={18} className="text-zinc-500 group-hover:text-rose-400 transition-transform" /> 
                 <span>Sair da conta</span>
               </button>
@@ -293,7 +313,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         className="flex-1 h-full overflow-y-auto relative flex flex-col w-full z-10 no-scrollbar"
       >
         
-        {/* Header */}
+        {/* Header Mobile/Desktop */}
         <AnimatePresence>
           {(!isSidebarOpen || isMobile) && (
             <motion.header 
@@ -309,7 +329,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
           )}
         </AnimatePresence>
 
-        {/* --- MODAIS --- */}
+        {/* --- MODAIS (Overlay) --- */}
 
         {/* Modal Edição */}
         <AnimatePresence>
@@ -326,7 +346,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-lg font-bold text-white">Editar Tarefa</h3>
-                  <button onClick={() => setEditingTask(null)}><X size={20} className="text-zinc-500 hover:text-white"/></button>
+                  <button onClick={() => setEditingTask(null)}>
+                    <X size={20} className="text-zinc-500 hover:text-white"/>
+                  </button>
                 </div>
                 
                 <div className="space-y-1">
@@ -686,7 +708,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
             ))}
           </div>
 
-          {/* --- SESSÃO CONCLUÍDAS --- */}
+          {/* --- SESSÃO CONCLUÍDAS (AGORA SIM!) --- */}
           <AnimatePresence>
             {completedRootTasks.length > 0 && (
               <motion.div 
