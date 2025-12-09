@@ -100,24 +100,20 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
     if (!input.trim()) return
     setLoading(true)
     
-    // Prepara contexto para a IA
     const userContext = {
       localTime: new Date().toLocaleString('pt-BR'),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
     
-    // Prepara payload de recorrência se houver
     const recurrencePayload = selectedRecurrence.type ? { 
       type: selectedRecurrence.type as any, 
       interval: selectedRecurrence.interval 
     } : undefined
     
-    // Chama a Server Action
     const result = await organizeTasks(input, userContext, recurrencePayload, selectedDate)
     
     if (result.success && result.data) {
       setTasks(prev => [...result.data, ...prev])
-      // Limpa os campos após sucesso
       setInput('')
       setSelectedRecurrence(RECURRENCE_OPTIONS[0])
       setSelectedDate('')
@@ -129,15 +125,12 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
   const handleToggle = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'concluido' ? 'pendente' : 'concluido'
-    // Atualização Otimista (UI primeiro)
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t))
-    // Atualização no Banco
     await toggleTask(id, newStatus === 'concluido')
   }
 
   const handleDelete = async (id: string) => {
     if(confirm("Tem certeza que deseja excluir esta tarefa?")) {
-      // Remove tarefa e suas subtarefas visualmente
       setTasks(prev => prev.filter(t => t.id !== id && t.parent_id !== id))
       await deleteTask(id)
     }
@@ -145,14 +138,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
   const handleSaveEdit = async () => {
     if (!editingTask) return
-    
-    // Atualiza na lista local
     setTasks(prev => prev.map(t => t.id === editingTask.id ? editingTask : t))
-    
     const taskToSave = { ...editingTask }
-    setEditingTask(null) // Fecha modal
-    
-    // Salva no banco
+    setEditingTask(null)
     await updateTask(taskToSave.id, taskToSave)
   }
 
@@ -174,7 +162,6 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
   const handleAddSuggestion = async (suggestion: any, index: number) => {
     setAddedSuggestions(prev => [...prev, index])
     if (activeTask) {
-      // Cria a tarefa vinculada ao Pai (activeTask.id)
       const result = await createTask(suggestion, activeTask.id)
       if (result.success && result.data) {
         setTasks(prev => [result.data, ...prev])
@@ -184,28 +171,19 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
 
   // --- FILTROS DE VISUALIZAÇÃO ---
 
-  // Filtra por categoria selecionada na sidebar
-  const categoryTasks = activeCategory === 'all' 
-    ? tasks 
-    : tasks.filter(t => t.category === activeCategory)
-
-  // Separa tarefas Raiz (Pai) de Subtarefas (Filho)
+  const categoryTasks = activeCategory === 'all' ? tasks : tasks.filter(t => t.category === activeCategory)
   const rootTasks = categoryTasks.filter(t => !t.parent_id)
   
-  // Filtra por status
   const activeRootTasks = rootTasks.filter(t => t.status !== 'concluido')
   const completedRootTasks = rootTasks.filter(t => t.status === 'concluido')
 
-  // Função para buscar e ordenar subtarefas de um pai
   const getSubtasks = (parentId: string) => {
     if (!parentId) return []
     return tasks
       .filter(t => t.parent_id === parentId)
       .sort((a, b) => {
-        // Concluídas vão para o final
         if (a.status === 'concluido' && b.status !== 'concluido') return 1
         if (a.status !== 'concluido' && b.status === 'concluido') return -1
-        // Ordena por prioridade
         const pA = PRIORITY_ORDER[a.priority?.toLowerCase()] || 99
         const pB = PRIORITY_ORDER[b.priority?.toLowerCase()] || 99
         return pA - pB
@@ -229,8 +207,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
         className="hidden md:flex h-full flex-col shrink-0 overflow-hidden whitespace-nowrap z-20 border-r border-white/5 bg-[#0f1115]/60 backdrop-blur-xl relative shadow-2xl"
       >
         <div className="w-[280px] flex flex-col h-full">
-            {/* Header Sidebar */}
-            <div className="p-5 pb-6 flex justify-between items-center">
+            <div className="p-6 flex justify-between items-center">
               <div className="flex items-center gap-3 pl-2">
                 <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-1.5 rounded-lg shadow-lg shadow-indigo-500/20">
                   <Sparkles size={18} className="text-white" fill="currentColor" />
@@ -245,14 +222,12 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
               </button>
             </div>
 
-            {/* Menu Items */}
             <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
               <p className="text-[10px] font-bold text-zinc-500 px-3 mb-3 uppercase tracking-widest">Workspace</p>
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon
                 const isActive = activeCategory === item.id
                 
-                // Contador inteligente
                 const count = item.id === 'all' 
                   ? tasks.filter(t => t.status !== 'concluido').length 
                   : tasks.filter(t => t.category === item.id && t.status !== 'concluido').length
@@ -292,17 +267,9 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
                 )
               })}
             </nav>
-
-            {/* Footer Sidebar */}
             <div className="p-4 border-t border-white/5 space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group pl-4">
-                <Settings size={18} className="text-zinc-500 group-hover:text-zinc-300" />
-                <span>Configurações</span>
-              </button>
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group pl-4">
-                <LogOut size={18} className="text-zinc-500 group-hover:text-rose-400 transition-transform" /> 
-                <span>Sair da conta</span>
-              </button>
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all group"><Settings size={18} className="text-zinc-500 group-hover:text-zinc-300" /><span>Configurações</span></button>
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all group"><LogOut size={18} className="text-zinc-500 group-hover:text-rose-400 transition-transform" /><span>Sair da conta</span></button>
             </div>
         </div>
       </motion.aside>
@@ -708,7 +675,7 @@ export function OrganizeForm({ initialTasks }: { initialTasks: any[] }) {
             ))}
           </div>
 
-          {/* --- SESSÃO CONCLUÍDAS (AGORA SIM!) --- */}
+          {/* --- SESSÃO CONCLUÍDAS (AGORA SIM, PRESENTE!) --- */}
           <AnimatePresence>
             {completedRootTasks.length > 0 && (
               <motion.div 
